@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DesktopRouteImport } from './routes/desktop'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ApiArchiveRouteImport } from './routes/api/archive'
+import { Route as ApiPlayerAuthRouteImport } from './routes/api/player-auth'
 import { Route as ApiRomRouteImport } from './routes/api/rom'
 import { Route as ApiStatsRouteImport } from './routes/api/stats'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -37,6 +38,11 @@ const ApiArchiveRoute = ApiArchiveRouteImport.update({
   path: '/api/archive',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayerAuthRoute = ApiPlayerAuthRouteImport.update({
+  id: '/api/player-auth',
+  path: '/api/player-auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRomRoute = ApiRomRouteImport.update({
   id: '/api/rom',
   path: '/api/rom',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/desktop': typeof DesktopRoute
   '/login': typeof LoginRoute
   '/api/archive': typeof ApiArchiveRoute
+  '/api/player-auth': typeof ApiPlayerAuthRoute
   '/api/rom': typeof ApiRomRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/desktop': typeof DesktopRoute
   '/login': typeof LoginRoute
   '/api/archive': typeof ApiArchiveRoute
+  '/api/player-auth': typeof ApiPlayerAuthRoute
   '/api/rom': typeof ApiRomRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/desktop': typeof DesktopRoute
   '/login': typeof LoginRoute
   '/api/archive': typeof ApiArchiveRoute
+  '/api/player-auth': typeof ApiPlayerAuthRoute
   '/api/rom': typeof ApiRomRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/desktop'
     | '/login'
     | '/api/archive'
+    | '/api/player-auth'
     | '/api/rom'
     | '/api/stats'
     | '/api/auth/$'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/desktop'
     | '/login'
     | '/api/archive'
+    | '/api/player-auth'
     | '/api/rom'
     | '/api/stats'
     | '/api/auth/$'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/desktop'
     | '/login'
     | '/api/archive'
+    | '/api/player-auth'
     | '/api/rom'
     | '/api/stats'
     | '/api/auth/$'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   DesktopRoute: typeof DesktopRoute
   LoginRoute: typeof LoginRoute
   ApiArchiveRoute: typeof ApiArchiveRoute
+  ApiPlayerAuthRoute: typeof ApiPlayerAuthRoute
   ApiRomRoute: typeof ApiRomRoute
   ApiStatsRoute: typeof ApiStatsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiArchiveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/player-auth': {
+      id: '/api/player-auth'
+      path: '/api/player-auth'
+      fullPath: '/api/player-auth'
+      preLoaderRoute: typeof ApiPlayerAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rom': {
       id: '/api/rom'
       path: '/api/rom'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesktopRoute: DesktopRoute,
   LoginRoute: LoginRoute,
   ApiArchiveRoute: ApiArchiveRoute,
+  ApiPlayerAuthRoute: ApiPlayerAuthRoute,
   ApiRomRoute: ApiRomRoute,
   ApiStatsRoute: ApiStatsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
