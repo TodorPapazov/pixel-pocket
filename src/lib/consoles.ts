@@ -32,6 +32,8 @@ export interface ArchiveCabinet {
   identifier: string;
   label: string;
   hint: string;
+  /** Subfolder inside the Archive.org item, no leading slash. */
+  folder?: string;
 }
 
 export interface ConsoleDef {
@@ -281,7 +283,7 @@ export const CONSOLES: ConsoleDef[] = [
     short: "DS",
     year: 2004,
     bits: "DUAL SCREEN",
-    blurb: "Two screens, a stylus, ABXY. Touch the bottom glass.",
+    blurb: "Turn sideways. Top screen on the left, touch screen on the right.",
     image: "/images/console-nds.jpg",
     core: "desmume2015",
     engine: "emulatorjs",
@@ -301,6 +303,12 @@ export const CONSOLES: ConsoleDef[] = [
     pocketSave: true,
     demos: [],
     cabinets: [
+      {
+        identifier: "nds_apfix",
+        label: "DS zip carts",
+        hint: "apfix folder · zip opens the cartridge inside",
+        folder: "apfix",
+      },
       {
         identifier: "nds-collection",
         label: "Nintendo DS roms",
@@ -401,8 +409,10 @@ export function consoleFromFilename(name: string): ConsoleId | null {
   return EXT_MAP[ext] ?? null;
 }
 
-export function archiveFolderUrl(identifier: string): string {
-  return `https://archive.org/details/${identifier}`;
+export function archiveFolderUrl(identifier: string, folder?: string): string {
+  if (!folder) return `https://archive.org/details/${identifier}`;
+  const clean = folder.replace(/^\/+|\/+$/g, "");
+  return `https://archive.org/download/${identifier}/${clean}/`;
 }
 
 export const ACCEPT_ATTR = CONSOLES.flatMap((c) =>

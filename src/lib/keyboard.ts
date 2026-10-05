@@ -57,7 +57,7 @@ export function buttonFromKey(code: string, id: ConsoleId): PadButton | null {
 }
 
 export function keyboardHint(id: ConsoleId): string {
-  if (id === "nds") return "PC · X A · Z B · S X · A Y · Q L · W R · arrows · touch bottom";
+  if (id === "nds") return "X A · Z B · S X · A Y · Q L · W R · arrows · touch the right screen";
   if (id === "gba") return "PC · Z A · X B · A L · S R · arrows · Enter start";
   if (id === "gb") return "GB / Color · Z A · X B · arrows or WASD · Enter start";
   return "";

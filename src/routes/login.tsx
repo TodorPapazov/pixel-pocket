@@ -34,7 +34,7 @@ function badCredentials(err: { code?: string; message?: string } | null | undefi
 
 export function Login() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [passcode, setPasscode] = useState("");
@@ -103,7 +103,7 @@ export function Login() {
       });
       if (badCredentials(err)) {
         throw new Error(
-          "Email or passcode did not match. If this is your first time, tap Create player.",
+          "Email or passcode did not match. Tap Forgot passcode if you need the way back in.",
         );
       }
       if (err) throw new Error(err.message ?? "Could not sign in.");
@@ -184,6 +184,35 @@ export function Login() {
               </button>
             </div>
 
+            {mode === "forgot" ? (
+              <div className="mt-4 space-y-3">
+                <h2 className="font-display text-lg text-fg">Get back in</h2>
+                <p className="text-sm leading-relaxed text-muted">
+                  There is no email reset yet. We never send a new passcode, and we
+                  cannot look up which email you used. That list stays private.
+                </p>
+                <p className="text-sm leading-relaxed text-muted">
+                  If you created a player with an email, sign in with that same
+                  email and passcode. If you used Google or X, use that button
+                  below. Those are separate players from an email passcode.
+                </p>
+                <p className="text-sm leading-relaxed text-muted">
+                  A game already saved on this phone is still in Recent sessions,
+                  even if you play as a guest. Cloud copies only come back with the
+                  same sign-in.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("in");
+                    setError(null);
+                  }}
+                  className="h-12 w-full rounded-2xl bg-fg text-sm font-medium text-bg"
+                >
+                  Back to sign in
+                </button>
+              </div>
+            ) : (
             <form onSubmit={(e) => void onEmail(e)} className="mt-4 space-y-3">
               {mode === "up" && (
                 <label className="block">
@@ -233,7 +262,20 @@ export function Login() {
               >
                 {busy ?? (mode === "up" ? "Create player" : "Sign in and resume")}
               </button>
+              {mode === "in" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("forgot");
+                    setError(null);
+                  }}
+                  className="min-h-11 w-full py-2 text-center text-sm text-muted"
+                >
+                  Forgot passcode or email?
+                </button>
+              )}
             </form>
+            )}
 
             <p className="my-5 text-center text-xs tracking-wider text-faint">OR</p>
 

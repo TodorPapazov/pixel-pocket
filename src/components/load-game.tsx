@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Archive, ArrowLeft, ClipboardPaste, History, Link2, Search, Upload } from "lucide-react";
-import { ACCEPT_ATTR, CONSOLE_BY_ID, archiveFolderUrl } from "@/lib/consoles";
+import { ACCEPT_ATTR, CONSOLE_BY_ID, archiveFolderUrl, type ConsoleId } from "@/lib/consoles";
 import {
   archiveCorsFileUrl,
   archiveGameLabel,
@@ -8,9 +8,11 @@ import {
   filterArchiveGames,
   isArchiveCatalogLink,
   parseArchiveLink,
+  prettyArchiveTitle,
   type ArchiveCatalog,
   type ArchiveGame,
 } from "@/lib/archive";
+import { libretroBoxUrls } from "@/lib/box-art";
 import {
   formatSavedAt,
   formatPlayed,
@@ -41,6 +43,7 @@ export function LoadGame() {
   const [progress, setProgress] = useState<{ received: number; total: number } | null>(null);
   const [catalog, setCatalog] = useState<ArchiveCatalog | null>(null);
   const [cabinetQuery, setCabinetQuery] = useState("");
+  const [shelfCount, setShelfCount] = useState(36);
   const [pendingGame, setPendingGame] = useState<ArchiveGame | null>(null);
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const fetchingTitle = useRef("");
@@ -51,6 +54,7 @@ export function LoadGame() {
   const fileRef = useRef<HTMLInputElement>(null);
   const urlRef = useRef<HTMLTextAreaElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
   const loadGen = useRef(0);
   const [kbInset, setKbInset] = useState(0);
   const [vvTop, setVvTop] = useState(0);
@@ -115,6 +119,20 @@ export function LoadGame() {
       off();
     };
   }, [consoleId, user?.id]);
+
+  useEffect(() => {
+    setShelfCount(36);
+  }, [catalog?.identifier, catalog?.title, cabinetQuery]);
+
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!el || !catalog) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setShelfCount((n) => n + 36);
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [catalog, cabinetQuery, shelfCount]);
 
   if (!def || !consoleId) return null;
   const selected = def;
@@ -273,6 +291,7 @@ export function LoadGame() {
         link.identifier,
         selected.id,
         selected.extensions,
+        link.prefix,
       );
       setCatalog(cat);
       window.setTimeout(() => searchRef.current?.focus(), 80);
@@ -446,7 +465,7 @@ export function LoadGame() {
             </p>
             <h1 className="truncate font-display text-xl text-fg">
               {pendingGame
-                ? pendingGame.title
+                ? prettyArchiveTitle(pendingGame.title)
                 : catalog
                   ? catalog.title
                   : "Load a game"}
@@ -488,7 +507,7 @@ export function LoadGame() {
             {pendingGame ? (
               <div className="rounded-2xl bg-surface p-4 ring-1 ring-border">
                 <p className="text-sm text-muted">
-                  {pendingGame.title} is {archiveGameLabel(pendingGame)}. Load both tracks?
+                  {prettyArchiveTitle(pendingGame.title)} is {archiveGameLabel(pendingGame)}. Load both tracks?
                 </p>
                 <button
                   type="button"
@@ -507,37 +526,32 @@ export function LoadGame() {
                     ref={searchRef}
                     value={cabinetQuery}
                     onChange={(e) => setCabinetQuery(e.target.value)}
-                    placeholder="Type a name"
+                    placeholder="Search this shelf"
                     className="h-12 min-w-0 flex-1 bg-transparent text-sm text-fg outline-none"
                   />
                 </label>
-                <p className="mb-2 text-xs text-muted">
-                  {catalog.games.length} discs · Pixel Pocket does not host these files.
+                <p className="mb-3 text-xs text-muted">
+                  {cabinetHits.length} of {catalog.games.length} on the shelf. Scroll, or search.
+                  Pixel Pocket does not host these files.
                 </p>
-                <ul className="space-y-2">
-                  {cabinetHits.map((game) => (
+                <ul className="grid grid-cols-2 gap-3 min-[700px]:grid-cols-4">
+                  {cabinetHits.slice(0, shelfCount).map((game) => (
                     <li key={game.id}>
-                      <button
-                        type="button"
-                        disabled={Boolean(busy)}
-                        onClick={() => onPickGame(game)}
-                        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl bg-surface px-3 py-3 text-left ring-1 ring-border disabled:opacity-60"
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm text-fg">{game.title}</span>
-                          <span className="block truncate text-xs text-muted">
-                            {archiveGameLabel(game)}
-                          </span>
-                        </span>
-                        {activeGameId === game.id ? (
-                          <span className="text-xs text-accent">Loading</span>
-                        ) : null}
-                      </button>
+                      <ShelfCard
+                        game={game}
+                        identifier={catalog.identifier}
+                        consoleId={selected.id}
+                        short={selected.short}
+                        busy={Boolean(busy)}
+                        loading={activeGameId === game.id}
+                        onPick={() => onPickGame(game)}
+                      />
                     </li>
                   ))}
                 </ul>
-                {cabinetQuery && cabinetHits.length === 0 && (
-                  <p className="text-sm text-muted">No match in this cabinet.</p>
+                {shelfCount < cabinetHits.length ? <div ref={moreRef} className="h-8" /> : null}
+                {cabinetHits.length === 0 && (
+                  <p className="text-sm text-muted">No match on this shelf.</p>
                 )}
               </>
             )}
@@ -546,6 +560,11 @@ export function LoadGame() {
           <>
             <section className="sheet-copy mb-6">
               <label className="mb-1 block text-xs text-muted">ROM or folder link</label>
+              {selected.extensions.includes("zip") && (
+                <p className="mb-2 text-xs leading-relaxed text-muted">
+                  Zip files on Dual Screen unpack automatically. The cartridge inside is what plays.
+                </p>
+              )}
               <textarea
                 ref={urlRef}
                 value={url}
@@ -601,7 +620,11 @@ export function LoadGame() {
                   Archive.org folders
                 </h2>
                 <p className="mb-3 text-xs leading-relaxed text-muted">
-                  Tap a folder, type a name. Pixel Pocket does not host these files.
+                  Tap a folder and scroll the shelf. Search only if you already know the name.
+                  Pixel Pocket does not host these files.
+                  {selected.extensions.includes("zip")
+                    ? " Zip carts on this deck unpack and play the cartridge inside."
+                    : ""}
                 </p>
                 <ul className="space-y-2">
                   {selected.cabinets.map((cab) => (
@@ -610,7 +633,7 @@ export function LoadGame() {
                         type="button"
                         disabled={Boolean(busy)}
                         onClick={() => {
-                          const link = archiveFolderUrl(cab.identifier);
+                          const link = archiveFolderUrl(cab.identifier, cab.folder);
                           setUrl(link);
                           void openCabinet(link);
                         }}
@@ -725,5 +748,87 @@ export function LoadGame() {
         )}
       </div>
     </div>
+  );
+}
+
+function titleHue(title: string): number {
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = (h * 33 + title.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+
+function TitlePoster({ title, short }: { title: string; short: string }) {
+  const hue = titleHue(title);
+  return (
+    <div
+      className="flex h-full flex-col justify-between p-3"
+      style={{
+        background: `linear-gradient(165deg, hsl(${hue} 38% 46%), hsl(${(hue + 28) % 360} 32% 16%))`,
+      }}
+    >
+      <span className="font-display text-[0.6rem] tracking-[0.2em] text-white/75">{short}</span>
+      <span className="line-clamp-5 font-display text-sm leading-tight text-white">{title}</span>
+    </div>
+  );
+}
+
+function ShelfCard({
+  game,
+  identifier,
+  consoleId,
+  short,
+  busy,
+  loading,
+  onPick,
+}: {
+  game: ArchiveGame;
+  identifier: string;
+  consoleId: ConsoleId;
+  short: string;
+  busy: boolean;
+  loading: boolean;
+  onPick: () => void;
+}) {
+  const title = prettyArchiveTitle(game.title);
+  const sources = [
+    game.art ? archiveCorsFileUrl(identifier, game.art) : "",
+    ...libretroBoxUrls(consoleId, title),
+  ].filter(Boolean);
+  const [artIndex, setArtIndex] = useState(0);
+  const art = sources[artIndex];
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={onPick}
+      className="flex w-full flex-col overflow-hidden rounded-2xl bg-surface text-left ring-1 ring-border transition-transform duration-150 active:scale-[0.98] disabled:opacity-60"
+    >
+      <span className="relative block aspect-[3/4] overflow-hidden bg-raised">
+        {art ? (
+          <img
+            src={art}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            className="size-full object-cover"
+            onError={() => setArtIndex((n) => n + 1)}
+          />
+        ) : (
+          <TitlePoster title={title} short={short} />
+        )}
+        {loading ? (
+          <span className="absolute inset-x-0 bottom-0 bg-bg/80 px-2 py-1 text-center text-[0.65rem] text-accent">
+            Loading
+          </span>
+        ) : null}
+      </span>
+      <span className="block px-2.5 py-2">
+        <span className="line-clamp-2 text-xs leading-snug text-fg">{title}</span>
+        <span className="mt-0.5 block truncate text-[0.65rem] text-muted">
+          {archiveGameLabel(game)}
+        </span>
+      </span>
+    </button>
   );
 }

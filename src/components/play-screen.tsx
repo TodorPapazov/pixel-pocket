@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { ArrowLeft, Pause, Play, RotateCcw, Save, Volume2, VolumeX } from "lucide-react";
 import { CONSOLE_BY_ID } from "@/lib/consoles";
 import { putSave, getSave, isNotFoundError } from "@/lib/library";
@@ -31,6 +31,29 @@ export function PlayScreen() {
   const [paused, setPaused] = useState(false);
   const [crt, setCrt] = useState(game?.consoleId === "nes" || game?.consoleId === "snes");
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [landscape, setLandscape] = useState(true);
+
+  useEffect(() => {
+    const sync = () => {
+      const box = window.visualViewport;
+      const w = box?.width ?? window.innerWidth;
+      const h = box?.height ?? window.innerHeight;
+      const media = window.matchMedia?.("(orientation: landscape)").matches;
+      setLandscape(media || w >= h);
+    };
+    sync();
+    const media = window.matchMedia?.("(orientation: landscape)");
+    window.addEventListener("resize", sync);
+    window.addEventListener("orientationchange", sync);
+    window.visualViewport?.addEventListener("resize", sync);
+    media?.addEventListener?.("change", sync);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("orientationchange", sync);
+      window.visualViewport?.removeEventListener("resize", sync);
+      media?.removeEventListener?.("change", sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (!game || !def) return;
@@ -213,9 +236,9 @@ export function PlayScreen() {
           if (!cancelled) handle.kickAudio();
         }, 800);
         if (restored === "state") {
-          setSaveMsg("Picked up your pocket.");
+          setSaveMsg("Loaded your last save.");
         } else if (restored === "sram") {
-          setSaveMsg("Picked up your in-game save.");
+          setSaveMsg("Loaded the save stored on the cartridge.");
         }
       } catch (e) {
         canvas?.remove();
@@ -223,7 +246,7 @@ export function PlayScreen() {
         setStatus("error");
         setMessage(
           isNotFoundError(e)
-            ? "Could not restore that pocket. Eject, then open the cartridge again."
+            ? "Could not restore that save. Leave the game, then open it again."
             : e instanceof Error
               ? e.message
               : "The deck would not start. Try a smaller ROM or a handheld.",
@@ -314,7 +337,37 @@ export function PlayScreen() {
 
   if (!game || !def) return null;
 
-  const screenInner = (
+  const screenInner =
+    def.id === "nds" ? (
+      <div ref={screenBoxRef} className="ds-screens">
+        <div className="ds-panel">
+          <DsTopMirror sourceRef={ejsRef} />
+        </div>
+        <div className="ds-panel">
+          <div className="ds-fit ds-touch">
+            <div ref={ejsRef} className="ejs-host ds-bottom-host" />
+            <span className="pointer-events-none absolute bottom-1 right-2 text-[0.6rem] tracking-[0.14em] text-white/70">
+              TOUCH
+            </span>
+          </div>
+        </div>
+        {status !== "ready" && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-bg/90 px-4 text-center">
+            <img src="/images/mascot.jpg" alt="" className="size-16 rounded-2xl object-cover" />
+            <p className="font-display text-sm text-fg">{message}</p>
+            {status === "error" && (
+              <button
+                type="button"
+                onClick={() => void eject()}
+                className="rounded-2xl bg-fg px-4 py-2 text-sm font-medium text-bg"
+              >
+                Back
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    ) : (
     <div className="relative h-full min-h-0 w-full">
       <div ref={screenBoxRef} className="pixel-screen absolute inset-0">
         <div
@@ -348,7 +401,7 @@ export function PlayScreen() {
         </div>
       )}
     </div>
-  );
+    );
 
   const handheld = def.hold === "brick" || def.hold === "wide" || def.hold === "clamshell";
 
@@ -381,31 +434,31 @@ export function PlayScreen() {
     const h = handleRef.current;
     if (!h || !game) return;
     const ok = await persistRef.current();
-    setSaveMsg(ok ? "Pocket saved to your player." : "Could not save.");
+    setSaveMsg(ok ? "Saved. It will show in Recent sessions." : "Could not save. Try again.");
   }
 
   async function onLoad() {
     if (!game) return;
     const pocket = await getSave(game.id);
     if (!pocket?.state) {
-      setSaveMsg("No pocket yet.");
+      setSaveMsg("Nothing saved yet. Pause the game, then tap Save game.");
       return;
     }
     try {
       await handleRef.current?.loadState(pocket.state);
-      setSaveMsg("Picked up your pocket.");
+      setSaveMsg("Loaded your last save.");
       handleRef.current?.resume();
       pausedRef.current = false;
       sessionRef.current.running = Date.now();
       setPaused(false);
     } catch {
-      setSaveMsg("Could not load that pocket.");
+      setSaveMsg("Could not load that save.");
     }
   }
 
   async function eject() {
     if (status === "ready") {
-      setSaveMsg("Saving pocket…");
+      setSaveMsg("Saving…");
       await Promise.race([
         persistRef.current(),
         new Promise<boolean>((resolve) =>
@@ -427,6 +480,7 @@ export function PlayScreen() {
       style={{ touchAction: "none" }}
       onPointerDown={() => handleRef.current?.kickAudio()}
     >
+      {def.id !== "nds" && (
       <header className="pad-app-top pad-app-x flex items-center gap-2 pb-1">
         <button
           type="button"
@@ -439,7 +493,7 @@ export function PlayScreen() {
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-sm text-fg">{game.name}</p>
           <p className="truncate text-[0.65rem] tracking-wider text-muted">
-            {usesPcKeyboard(def.id) ? keyboardHint(def.id) : `${def.short} · pocket save`}
+            {usesPcKeyboard(def.id) ? keyboardHint(def.id) : `${def.short} · saves as you play`}
           </p>
         </div>
         <button
@@ -459,6 +513,7 @@ export function PlayScreen() {
           {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
         </button>
       </header>
+      )}
       {saveMsg && !paused && (
         <p className="px-3 pb-0.5 text-center text-[0.7rem] text-ok">{saveMsg}</p>
       )}
@@ -466,10 +521,28 @@ export function PlayScreen() {
       <div
         className={cn(
           "flex min-h-0 flex-1",
-          handheld ? "play-stage-handheld" : "flex-col landscape:flex-row",
+          handheld && def.id !== "nds" ? "play-stage-handheld" : "flex-col landscape:flex-row",
         )}
       >
-        {handheld ? (
+        {def.id === "nds" ? (
+          <div className="ds-play">
+            {!landscape && (
+              <p className="ds-turn">
+                Turn sideways for a larger picture. You can play like this too.
+              </p>
+            )}
+            <VirtualPad
+              def={def}
+              handleRef={handleRef}
+              screen={screenInner}
+              chrome={{
+                onBack: () => void eject(),
+                onPause: togglePause,
+                paused,
+              }}
+            />
+          </div>
+        ) : handheld ? (
           <>
             {def.hold === "wide" && (
               <p className="pb-1 text-center text-[0.65rem] tracking-wide text-muted landscape:hidden min-[700px]:hidden">
@@ -515,14 +588,14 @@ export function PlayScreen() {
                 onClick={() => void onSave()}
                 className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-raised py-3 text-sm text-fg ring-1 ring-border"
               >
-                <Save className="size-4" /> Save pocket
+                <Save className="size-4" /> Save game
               </button>
               <button
                 type="button"
                 onClick={() => void onLoad()}
                 className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-raised py-3 text-sm text-fg ring-1 ring-border"
               >
-                Load pocket
+                Load save
               </button>
               <button
                 type="button"
@@ -544,8 +617,8 @@ export function PlayScreen() {
             </div>
             {saveMsg && <p className="mt-3 text-xs text-muted">{saveMsg}</p>}
             <p className="mt-3 text-xs leading-relaxed text-muted">
-              Eject or lock this device and your place is kept. Sign in and the
-              same pocket waits on your other devices.
+              Leaving this game keeps the save on this device. Sign in with the
+              same email if you want that save on your phone, iPad, and computer.
             </p>
             <button
               type="button"
@@ -557,6 +630,37 @@ export function PlayScreen() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DsTopMirror({ sourceRef }: { sourceRef: RefObject<HTMLDivElement | null> }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    let frame = 0;
+    const draw = () => {
+      frame = requestAnimationFrame(draw);
+      const src = sourceRef.current?.querySelector("canvas");
+      const dest = canvasRef.current;
+      if (!src || !dest || src.width < 8 || src.height < 8) return;
+      const w = src.width;
+      const h = Math.floor(src.height / 2);
+      if (h < 4) return;
+      if (dest.width !== w) dest.width = w;
+      if (dest.height !== h) dest.height = h;
+      const ctx = dest.getContext("2d", { alpha: false });
+      if (!ctx) return;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(src, 0, 0, w, h, 0, 0, w, h);
+    };
+    frame = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frame);
+  }, [sourceRef]);
+
+  return (
+    <div className="ds-fit">
+      <canvas ref={canvasRef} className="ds-mirror" aria-label="Top screen" />
     </div>
   );
 }

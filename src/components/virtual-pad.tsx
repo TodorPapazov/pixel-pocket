@@ -17,6 +17,11 @@ interface Props {
   def: ConsoleDef;
   handleRef: RefObject<EmuHandle | null>;
   screen?: ReactNode;
+  chrome?: {
+    onBack: () => void;
+    onPause: () => void;
+    paused: boolean;
+  };
 }
 
 function dirsFromVector(dx: number, dy: number): PadButton[] {
@@ -32,7 +37,7 @@ function dirsFromVector(dx: number, dy: number): PadButton[] {
   return out;
 }
 
-export function VirtualPad({ def, handleRef, screen }: Props) {
+export function VirtualPad({ def, handleRef, screen, chrome }: Props) {
   const counts = useRef<Partial<Record<PadButton, number>>>({});
   const keyHeld = useRef(new Set<string>());
   const [pressed, setPressed] = useState<Record<string, boolean>>({});
@@ -340,6 +345,51 @@ export function VirtualPad({ def, handleRef, screen }: Props) {
       {label}
     </button>
   );
+
+  if (def.id === "nds") {
+    const faces = (
+      <div className="ds-faces relative shrink-0">
+        <div className="absolute left-1/2 top-0 -translate-x-1/2">
+          {face("x", "X", "bg-[var(--face-x)]")}
+        </div>
+        <div className="absolute left-0 top-1/2 -translate-y-1/2">
+          {face("y", "Y", "bg-[var(--face-y)]")}
+        </div>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2">
+          {face("a", "A", "bg-[var(--face-a)]")}
+        </div>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
+          {face("b", "B", "bg-[var(--face-b)]")}
+        </div>
+      </div>
+    );
+    return (
+      <div className="ds-stage shell-nds no-select" style={{ touchAction: "none" }}>
+        <div className="ds-bezel">
+          {chrome ? (
+            <button type="button" className="ds-chrome" onClick={chrome.onBack} aria-label="Eject">
+              Back
+            </button>
+          ) : null}
+          {shoulder("l", "L", "l")}
+          {crossPad}
+          {sysBtn("select", "SELECT")}
+          {keysHint}
+        </div>
+        <div className="ds-center">{screen}</div>
+        <div className="ds-bezel">
+          {chrome ? (
+            <button type="button" className="ds-chrome" onClick={chrome.onPause} aria-label={chrome.paused ? "Resume" : "Pause"}>
+              {chrome.paused ? "Play" : "Pause"}
+            </button>
+          ) : null}
+          {shoulder("r", "R", "r")}
+          {faces}
+          {sysBtn("start", "START")}
+        </div>
+      </div>
+    );
+  }
 
   if (def.hold === "brick" || def.hold === "wide" || def.hold === "clamshell") {
     return (

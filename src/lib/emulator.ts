@@ -320,7 +320,26 @@ export async function launchEmulatorJS(opts: {
   w.EJS_startOnLoaded = true;
   w.EJS_color = "#c94c3d";
   w.EJS_backgroundColor = "#0c0b0a";
-  w.EJS_Buttons = false;
+  w.EJS_Buttons = {
+    playPause: false,
+    restart: false,
+    mute: false,
+    settings: false,
+    fullscreen: false,
+    saveState: false,
+    loadState: false,
+    screenRecord: false,
+    gamepad: false,
+    cheat: false,
+    volume: false,
+    saveSavFiles: false,
+    loadSavFiles: false,
+    quickSave: false,
+    quickLoad: false,
+    screenshot: false,
+    cacheManager: false,
+    exitEmulation: false,
+  };
   w.EJS_hideSettings = true;
   w.EJS_disableDatabases = true;
   w.EJS_forceLegacyCores = true;
@@ -333,6 +352,10 @@ export async function launchEmulatorJS(opts: {
     );
     w.EJS_onGameStart = () => {
       window.clearTimeout(t);
+      const pad = document.querySelector<HTMLElement>(
+        ".ejs_virtualGamepad_parent, .ejs_virtualGamepad_open",
+      );
+      if (pad) pad.style.display = "none";
       resolve();
     };
   });
